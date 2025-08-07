@@ -14,21 +14,14 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Union, Generic
 from darts.datasets import TimeSeries
 from pydantic import Field, BaseModel
 from sqlalchemy import (
-    Column,
-    DateTime,
-    Integer,
-    String,
-    Text,
-    Boolean,
-    Float,
-    create_engine,
     select,
     update,
     delete,
 )
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from tsdb.crud.exceptions import CRUDError
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +30,6 @@ T = TypeVar("T", bound=TimeSeries)
 SQLModelType = TypeVar("SQLModelType")
 
 Base = declarative_base()
-
-
-class CRUDError(Exception):
-    """Base exception for CRUD operations"""
-
-    pass
 
 
 class CRUDConfig(BaseModel):
@@ -107,8 +94,8 @@ class CRUDMixin(Generic[T]):
     @classmethod
     def create(cls, data: Union[T, Dict[str, Any]]) -> T:
         """Create a new record"""
+        session = cls._get_session()
         try:
-            session = cls._get_session()
             config = cls._get_config()
             sql_model = cls._get_sql_model()
 
@@ -147,8 +134,8 @@ class CRUDMixin(Generic[T]):
     @classmethod
     def get_by_id(cls, record_id: Any) -> Optional[T]:
         """Get a record by ID"""
+        session = cls._get_session()
         try:
-            session = cls._get_session()
             config = cls._get_config()
             sql_model = cls._get_sql_model()
 
@@ -183,8 +170,8 @@ class CRUDMixin(Generic[T]):
         order_desc: bool = False,
     ) -> List[T]:
         """List records with optional filtering and pagination"""
+        session = cls._get_session()
         try:
-            session = cls._get_session()
             config = cls._get_config()
             sql_model = cls._get_sql_model()
 
@@ -242,8 +229,8 @@ class CRUDMixin(Generic[T]):
     @classmethod
     def update(cls, record_id: Any, data: Union[T, Dict[str, Any]]) -> Optional[T]:
         """Update a record by ID"""
+        session = cls._get_session()
         try:
-            session = cls._get_session()
             config = cls._get_config()
             sql_model = cls._get_sql_model()
 
@@ -288,8 +275,8 @@ class CRUDMixin(Generic[T]):
     @classmethod
     def delete(cls, record_id: Any, hard_delete: bool = False) -> bool:
         """Delete a record by ID"""
+        session = cls._get_session()
         try:
-            session = cls._get_session()
             config = cls._get_config()
             sql_model = cls._get_sql_model()
 
@@ -331,8 +318,8 @@ class CRUDMixin(Generic[T]):
     @classmethod
     def count(cls, filters: Optional[Dict[str, Any]] = None) -> int:
         """Count records with optional filtering"""
+        session = cls._get_session()
         try:
-            session = cls._get_session()
             config = cls._get_config()
             sql_model = cls._get_sql_model()
 
@@ -369,146 +356,3 @@ class CRUDMixin(Generic[T]):
 
         # Create Pydantic instance
         return cls(**data)
-
-
-def timescale_crud(
-    table_name: str,
-    primary_key: str = "id",
-    time_column: str = "created_at",
-    enable_soft_delete: bool = False,
-    soft_delete_column: str = "deleted_at",
-    enable_audit: bool = True,
-    audit_columns: Optional[Dict[str, str]] = None,
-    create_hypertable: bool = True,
-    chunk_time_interval: str = "1 day",
-):
-    """
-    Decorator that adds CRUD operations to a Pydantic model for TimescaleDB.
-
-    Args:
-        table_name: Name of the database table
-        primary_key: Name of the primary key column
-        time_column: Name of the time column for hypertable partitioning
-        enable_soft_delete: Enable soft delete functionality
-        soft_delete_column: Column name for soft delete timestamp
-        enable_audit: Enable audit fields (created_at, updated_at)
-        audit_columns: Custom mapping for audit column names
-        create_hypertable: Whether to create a TimescaleDB hypertable
-        chunk_time_interval: Time interval for hypertable chunks
-
-    Returns:
-        Decorated Pydantic model class with CRUD operations
-    """
-
-    def decorator(pydantic_model: Type[T]) -> Type[T]:
-        # Create CRUD config
-        config = CRUDConfig(
-            table_name=table_name,
-            primary_key=primary_key,
-            time_column=time_column,
-            enable_soft_delete=enable_soft_delete,
-            soft_delete_column=soft_delete_column,
-            enable_audit=enable_audit,
-            audit_columns=audit_columns
-            or {"created_at": "created_at", "updated_at": "updated_at"},
-        )
-
-        # Create SQLAlchemy model dynamically
-        sql_model_attrs = {
-            "__tablename__": table_name,
-        }
-
-        # Add columns based on Pydantic model fields
-        for field_name, field_info in pydantic_model.model_fields.items():
-            python_type = field_info.annotation
-
-            # Map Python types to SQLAlchemy types
-            if python_type == int:
-                if field_name == primary_key:
-                    sql_model_attrs[field_name] = Column(
-                        Integer, primary_key=True, autoincrement=True
-                    )
-                else:
-                    sql_model_attrs[field_name] = Column(Integer)
-            elif python_type == str:
-                sql_model_attrs[field_name] = Column(String(255))
-            elif python_type == float:
-                sql_model_attrs[field_name] = Column(Float)
-            elif python_type == bool:
-                sql_model_attrs[field_name] = Column(Boolean)
-            elif python_type == datetime:
-                sql_model_attrs[field_name] = Column(DateTime)
-            else:
-                # Default to Text for complex types
-                sql_model_attrs[field_name] = Column(Text)
-
-        # Add audit columns if enabled
-        if enable_audit:
-            if audit_columns:
-                for logical_name, column_name in audit_columns.items():
-                    if logical_name in ["created_at", "updated_at"]:
-                        sql_model_attrs[column_name] = Column(
-                            DateTime, default=datetime.utcnow
-                        )
-
-        # Add soft delete column if enabled
-        if enable_soft_delete:
-            sql_model_attrs[soft_delete_column] = Column(DateTime, nullable=True)
-
-        # Create SQLAlchemy model class
-        sql_model = type(f"{pydantic_model.__name__}SQL", (Base,), sql_model_attrs)
-
-        # Create new class that inherits from both Pydantic model and CRUDMixin
-        class EnhancedModel(pydantic_model, CRUDMixin[pydantic_model]):
-            pass
-
-        # Set configuration
-        EnhancedModel.set_config(config)
-        EnhancedModel.set_sql_model(sql_model)
-
-        # Store references for hypertable creation
-        EnhancedModel._create_hypertable = create_hypertable
-        EnhancedModel._chunk_time_interval = chunk_time_interval
-        EnhancedModel._sql_model_class = sql_model
-
-        # Add method to initialize database
-        @classmethod
-        def init_db(cls, engine, create_tables: bool = True):
-            """Initialize database tables and hypertables"""
-            if create_tables:
-                Base.metadata.create_all(engine)
-
-            if create_hypertable:
-                # Create TimescaleDB hypertable
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(f"""
-                            SELECT create_hypertable('{table_name}', '{time_column}', 
-                                                    chunk_time_interval => INTERVAL '{chunk_time_interval}');
-                        """)
-                        conn.commit()
-                        logger.info(f"Created hypertable for {table_name}")
-                    except Exception as e:
-                        # Hypertable might already exist
-                        logger.warning(
-                            f"Could not create hypertable for {table_name}: {e}"
-                        )
-
-        EnhancedModel.init_db = init_db
-
-        # Preserve original class name and module
-        EnhancedModel.__name__ = pydantic_model.__name__
-        EnhancedModel.__qualname__ = pydantic_model.__qualname__
-        EnhancedModel.__module__ = pydantic_model.__module__
-
-        return EnhancedModel
-
-    return decorator
-
-
-# Utility function to create database session
-def create_session(database_url: str, echo: bool = False) -> Session:
-    """Create a database session"""
-    engine = create_engine(database_url, echo=echo)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    return SessionLocal()

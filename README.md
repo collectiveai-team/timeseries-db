@@ -33,7 +33,7 @@ dependencies = [
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
-from tsdb.core import timescale_crud
+from tsdb.decoreators.pydantic_decorator import timescale_crud
 
 @timescale_crud(
     table_name="sensor_readings",
@@ -54,7 +54,7 @@ class SensorReading(BaseModel):
 
 ```python
 from sqlalchemy import create_engine
-from tsdb.core import create_session
+from tsdb.decoreators.pydantic_decorator import create_session
 
 # Create database connection
 DATABASE_URL = "postgresql://user:password@localhost:5432/timeseries_db"
@@ -227,7 +227,7 @@ The `filters` parameter supports various operators:
 The decorator raises `CRUDError` exceptions for database-related errors:
 
 ```python
-from tsdb.core import CRUDError
+from tsdb.crud import CRUDError
 
 try:
     record = Model.create(invalid_data)

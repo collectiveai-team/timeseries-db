@@ -70,6 +70,10 @@ dev = [
     "diskcache>=5.6.3",
     "typer>=0.16.0",
     "pytest>=8.4.1",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-asyncio>=0.25.0",
+    "psycopg2-binary>=2.9.10",
 ]
 
 
@@ -98,7 +102,7 @@ include = ["tsdb"]
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "tsdb/core/version.py"
+version-file = "tsdb/version.py"
 
 
 [tool.hatch.version.raw-options]
