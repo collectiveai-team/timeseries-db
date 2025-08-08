@@ -2,3 +2,4 @@
 */*/__pycache__/*
 .venv
 .pytest_cache
+tests/unit/__pycache__/test_pydantic_decorator.cpython-313-pytest-8.4.1.pyc

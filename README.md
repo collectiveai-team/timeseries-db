@@ -33,7 +33,7 @@ dependencies = [
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
-from tsdb.decoreators.pydantic_decorator import timescale_crud
+from tsdb.decorators.pydantic_decorator import timescale_crud
 
 @timescale_crud(
     table_name="sensor_readings",
@@ -54,7 +54,7 @@ class SensorReading(BaseModel):
 
 ```python
 from sqlalchemy import create_engine
-from tsdb.decoreators.pydantic_decorator import create_session
+from tsdb.decorators.pydantic_decorator import create_session
 
 # Create database connection
 DATABASE_URL = "postgresql://user:password@localhost:5432/timeseries_db"

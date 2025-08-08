@@ -9,7 +9,7 @@ from unittest.mock import Mock
 from pydantic import BaseModel
 from typing import Optional
 
-from tsdb.decoreators.pydantic_decorator import timescale_crud
+from tsdb.decorators.pydantic_decorator import timescale_crud
 from tsdb.crud import CRUDConfig, CRUDError
 
 

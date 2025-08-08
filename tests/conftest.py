@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 from pydantic import BaseModel
 
-from tsdb.decoreators.pydantic_decorator import Base, timescale_crud
+from tsdb.decorators.pydantic_decorator import Base, timescale_crud
 
 
 @pytest.fixture(scope="session")

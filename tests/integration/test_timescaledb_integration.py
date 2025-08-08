@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from tsdb.decoreators.pydantic_decorator import timescale_crud
+from tsdb.decorators.pydantic_decorator import timescale_crud
 
 
 # Skip integration tests if no database URL is provided
