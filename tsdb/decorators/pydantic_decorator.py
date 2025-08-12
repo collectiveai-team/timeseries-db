@@ -170,7 +170,56 @@ def timescale_crud(
 
         # Create new class that inherits from both Pydantic model and CRUDMixin
         class EnhancedModel(pydantic_model, CRUDMixin[pydantic_model]):
-            pass
+            def save(self, session) -> 'EnhancedModel':
+                """Save this instance to the database (create or update)"""
+                # Extract underlying SQLAlchemy session if it's a CRUDSession wrapper
+                actual_session = getattr(session, '_session', session)
+                
+                # Set session for the class
+                self.__class__.set_session(actual_session)
+                
+                if self._get_primary_key_value() is None:
+                    # Create new record
+                    return CRUDMixin.create.__func__(self.__class__, self)
+                else:
+                    # Update existing record
+                    pk_value = self._get_primary_key_value()
+                    return CRUDMixin.update.__func__(self.__class__, pk_value, self)
+            
+            def delete(self, session, hard_delete: bool = False) -> bool:
+                """Delete this instance from the database"""
+                # Extract underlying SQLAlchemy session if it's a CRUDSession wrapper
+                actual_session = getattr(session, '_session', session)
+                
+                # Set session for the class
+                self.__class__.set_session(actual_session)
+                
+                pk_value = self._get_primary_key_value()
+                if pk_value is None:
+                    raise ValueError("Cannot delete instance without primary key")
+                return CRUDMixin.delete.__func__(self.__class__, pk_value, hard_delete=hard_delete)
+            
+            def refresh(self, session) -> 'EnhancedModel':
+                """Refresh this instance from the database"""
+                # Extract underlying SQLAlchemy session if it's a CRUDSession wrapper
+                actual_session = getattr(session, '_session', session)
+                
+                # Set session for the class
+                self.__class__.set_session(actual_session)
+                
+                pk_value = self._get_primary_key_value()
+                if pk_value is None:
+                    raise ValueError("Cannot refresh instance without primary key")
+                refreshed = CRUDMixin.get_by_id.__func__(self.__class__, pk_value)
+                if refreshed is None:
+                    config = self.__class__._get_config()
+                    raise ValueError(f"Record with {config.primary_key}={pk_value} not found")
+                return refreshed
+            
+            def _get_primary_key_value(self):
+                """Get the primary key value of this instance"""
+                config = self.__class__._get_config()
+                return getattr(self, config.primary_key, None)
 
         # Set configuration
         EnhancedModel.set_config(config)
@@ -206,3 +255,11 @@ def create_session(database_url: str, echo: bool = False) -> Session:
     engine = create_engine(database_url, echo=echo)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     return SessionLocal()
+
+# Utility function to create CRUD session with enhanced functionality
+def create_crud_session(database_url: str, echo: bool = False):
+    """Create a CRUD session with enhanced save/delete functionality"""
+    from tsdb.crud.session import CRUDSession
+    engine = create_engine(database_url, echo=echo)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    return CRUDSession(SessionLocal())

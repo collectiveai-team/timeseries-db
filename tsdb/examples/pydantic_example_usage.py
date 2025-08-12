@@ -19,6 +19,7 @@ from tsdb.decorators.pydantic_decorator import timescale_crud, create_session
     time_column="timestamp",
     create_hypertable=True,
     chunk_time_interval="1 hour",
+    enable_audit=False,  # Disable audit since we use timestamp field
 )
 class SensorReading(BaseModel):
     id: Optional[int] = None
@@ -69,7 +70,7 @@ def example_usage():
     """Demonstrate how to use the decorated models"""
 
     # Setup database connection
-    DATABASE_URL = "postgresql://user:password@localhost:5432/timeseries_db"
+    DATABASE_URL = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
     engine = create_engine(DATABASE_URL, echo=True)
     session = create_session(DATABASE_URL)
 
@@ -88,12 +89,12 @@ def example_usage():
         print("=== Creating Sensor Readings ===")
 
         reading1 = SensorReading.create(
-            {
-                "sensor_id": "TEMP_001",
-                "temperature": 23.5,
-                "humidity": 45.2,
-                "location": "Office",
-            }
+            SensorReading(
+                sensor_id="TEMP_001",
+                temperature=23.5,
+                humidity=45.2,
+                location="Office",
+            )
         )
         print(f"Created reading: {reading1}")
 

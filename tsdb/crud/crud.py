@@ -101,9 +101,11 @@ class CRUDMixin(Generic[T]):
 
             # Convert Pydantic model to dict if needed
             if isinstance(data, BaseModel):
-                data_dict = data.model_dump(exclude_unset=True)
+                data_dict = data.model_dump()
             else:
-                data_dict = data.copy()
+                # Create Pydantic instance first to trigger defaults, then convert to dict
+                pydantic_instance = cls(**data)
+                data_dict = pydantic_instance.model_dump()
 
             # Add audit fields
             if config.enable_audit:
@@ -236,8 +238,9 @@ class CRUDMixin(Generic[T]):
 
             # Convert Pydantic model to dict if needed
             if isinstance(data, BaseModel):
-                data_dict = data.model_dump(exclude_unset=True)
+                data_dict = data.model_dump()
             else:
+                # For updates, just copy the dict since it's partial data (not all fields required)
                 data_dict = data.copy()
 
             # Add audit fields
