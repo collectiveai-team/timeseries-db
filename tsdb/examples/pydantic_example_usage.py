@@ -10,7 +10,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 
-from tsdb.core.pydantic_decorator import timescale_crud, create_session
+from tsdb.decorators.pydantic_decorator import timescale_crud, create_session
 
 
 # Example 1: Simple time series data model
