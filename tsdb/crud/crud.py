@@ -350,6 +350,67 @@ class CRUDMixin(Generic[T]):
             raise CRUDError(f"Failed to count records: {e}")
 
     @classmethod
+    def bulk_insert(
+        cls,
+        data_list: List[Union[T, Dict[str, Any]]],
+        batch_size: int = 1000,
+        return_defaults: bool = False,
+    ) -> List[T]:
+        """
+        Create multiple records efficiently using bulk insert
+
+        Args:
+            data_list: List of Pydantic models or dictionaries to insert
+            batch_size: Number of records to insert per batch (default: 1000)
+            return_defaults: If True, return created records with defaults/IDs (slower)
+
+        Returns:
+            List of created Pydantic models (empty if return_defaults=False)
+        """
+        session = cls._get_session()
+        try:
+            config = cls._get_config()
+            sql_model = cls._get_sql_model()
+
+            if not data_list:
+                return []
+
+            created_records = []
+
+            for i in range(0, len(data_list), batch_size):
+                batch = data_list[i : i + batch_size]
+                batch_dicts = []
+
+                # Convert batch to dictionaries with audit fields
+                for item in batch:
+                    if isinstance(item, BaseModel):
+                        data_dict = item.model_dump()
+                    else:
+                        pydantic_instance = cls(**item)
+                        data_dict = pydantic_instance.model_dump()
+
+                    # Add audit fields
+                    if config.enable_audit:
+                        now = datetime.utcnow()
+                        if config.audit_columns.get("created_at"):
+                            data_dict[config.audit_columns["created_at"]] = now
+                        if config.audit_columns.get("updated_at"):
+                            data_dict[config.audit_columns["updated_at"]] = now
+
+                    batch_dicts.append(data_dict)
+
+                # Use bulk_insert_mappings for maximum performance
+                session.bulk_insert_mappings(sql_model, batch_dicts)
+                session.commit()
+
+            return created_records
+
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Database error during bulk create: {e}")
+            raise CRUDError(f"Failed to bulk create records: {e}")
+
+    @classmethod
     def _sql_to_pydantic(cls, sql_obj) -> T:
         """Convert SQLAlchemy object to Pydantic model"""
         # Get all column values as dict
