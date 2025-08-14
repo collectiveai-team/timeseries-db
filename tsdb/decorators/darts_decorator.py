@@ -12,7 +12,13 @@ import pickle
 from datetime import datetime
 from typing import Dict, List, Optional, Type, TypeVar, Any
 
-from darts import TimeSeries
+try:
+    from darts import TimeSeries
+    DARTS_AVAILABLE = True
+except ImportError:
+    TimeSeries = None
+    DARTS_AVAILABLE = False
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy import (
@@ -177,6 +183,9 @@ def timeseries_storage(
                 metadata: Optional[Dict[str, Any]] = None
             ) -> int:
                 """Save a TimeSeries to the database"""
+                if not DARTS_AVAILABLE:
+                    raise ImportError("darts package is required for TimeSeries operations. Install with: uv add tsdb[forecast]")
+                
                 try:
                     session = cls.get_session()
                     
@@ -233,6 +242,9 @@ def timeseries_storage(
             @classmethod
             def load_timeseries(cls, name: str) -> Optional[TimeSeries]:
                 """Load a TimeSeries from the database by name"""
+                if not DARTS_AVAILABLE:
+                    raise ImportError("darts package is required for TimeSeries operations. Install with: uv add tsdb[forecast]")
+                
                 try:
                     session = cls.get_session()
                     

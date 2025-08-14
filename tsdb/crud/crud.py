@@ -11,7 +11,13 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union, Generic
 
-from darts.datasets import TimeSeries
+try:
+    from darts.datasets import TimeSeries
+    DARTS_AVAILABLE = True
+except ImportError:
+    TimeSeries = None
+    DARTS_AVAILABLE = False
+
 from pydantic import Field, BaseModel
 from sqlalchemy import (
     select,

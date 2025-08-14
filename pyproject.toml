@@ -44,7 +44,6 @@ keywords = ["api", "deep-learning", "platform"]
 #######################################################################################
 dependencies = [
     "alembic>=1.16.2",
-    "darts>=0.36.0",
     "more-itertools>=10.7.0",
     "pydantic==2.10.6",
     "pydantic-ai>=0.3.5",
@@ -60,6 +59,9 @@ dependencies = [
 #######################################################################################
 [dependency-groups]
 api = []
+forecast = [
+    "darts>=0.36.0",
+]
 dev = [
     "hatch>=1.14.1",
     "ipykernel>=6.29.5",

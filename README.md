@@ -15,7 +15,29 @@ A powerful decorator for Pydantic models that provides CRUD operations with SQLA
 
 ## Installation
 
-The package uses the following dependencies (already included in `pyproject.toml`):
+### Basic Installation
+
+```bash
+uv add tsdb
+```
+
+### Optional Dependencies
+
+For TimeSeries forecasting functionality with Darts integration:
+
+```bash
+uv add tsdb[forecast]
+```
+
+This installs the optional `darts>=0.36.0` dependency required for TimeSeries storage and forecasting operations.
+
+### Development Installation
+
+```bash
+uv add tsdb[dev]
+```
+
+The package uses the following core dependencies:
 
 ```toml
 dependencies = [

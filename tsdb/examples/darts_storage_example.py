@@ -7,8 +7,14 @@ to add TimescaleDB storage capabilities to a class that works with Darts TimeSer
 
 from typing import Optional
 
-from darts import TimeSeries
-from darts.datasets import AirPassengersDataset
+try:
+    from darts import TimeSeries
+    from darts.datasets import AirPassengersDataset
+    DARTS_AVAILABLE = True
+except ImportError:
+    TimeSeries = None
+    AirPassengersDataset = None
+    DARTS_AVAILABLE = False
 from sqlalchemy import create_engine
 
 from tsdb.decorators.darts_decorator import timeseries_storage, create_session
@@ -70,6 +76,11 @@ class TimeSeriesManager:
 
 def main():
     """Example usage of the TimeSeriesManager."""
+    if not DARTS_AVAILABLE:
+        print("ERROR: darts package is required to run this example.")
+        print("Install with: uv add tsdb[forecast]")
+        return
+    
     # Database connection string (adjust as needed)
     database_url = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
 
