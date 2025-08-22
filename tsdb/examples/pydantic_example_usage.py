@@ -76,9 +76,9 @@ def example_usage():
     """Demonstrate how to use the decorated models"""
 
     # Setup database connection
-    DATABASE_URL = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
-    engine = create_engine(DATABASE_URL, echo=True)
-    session = create_session(DATABASE_URL)
+    TSDB_DATABASE_URI = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
+    engine = create_engine(TSDB_DATABASE_URI, echo=True)
+    session = create_session(TSDB_DATABASE_URI)
 
     # Initialize database tables and hypertables
     SensorReading.init_db(engine)

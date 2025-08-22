@@ -75,8 +75,8 @@ def run_duckdb_example():
 
 
 # --- 3. TimescaleDB Example (Requires a running TimescaleDB instance) ---
-# Set the DATABASE_URL environment variable, e.g.:
-# export DATABASE_URL="postgresql://user:password@localhost:5432/mydatabase"
+# Set the TSDB_DATABASE_URI environment variable, e.g.:
+# export TSDB_DATABASE_URI="postgresql://user:password@localhost:5432/mydatabase"
 
 
 @db_crud(
@@ -84,7 +84,7 @@ def run_duckdb_example():
     table_name="sensor_readings_timescaledb",
     primary_key="id",
     time_column="created_at",
-    db_url=os.getenv("DATABASE_URL"),
+    db_uri=os.getenv("TSDB_DATABASE_URI"),
     hypertable_config={
         "time_column_name": "created_at",
         "chunk_time_interval": "1 day",
@@ -95,8 +95,10 @@ class SensorReadingTimescale(SensorReading):
 
 
 def run_timescaledb_example():
-    if not os.getenv("DATABASE_URL"):
-        logger.warning("--- Skipping TimescaleDB Example: DATABASE_URL not set. ---")
+    if not os.getenv("TSDB_DATABASE_URI"):
+        logger.warning(
+            "--- Skipping TimescaleDB Example: TSDB_DATABASE_URI not set. ---"
+        )
         return
 
     logger.info("--- Running TimescaleDB Example ---")

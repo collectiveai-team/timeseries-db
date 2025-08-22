@@ -79,9 +79,9 @@ from sqlalchemy import create_engine
 from tsdb.decorators.pydantic_decorator import create_session
 
 # Create database connection
-DATABASE_URL = "postgresql://user:password@localhost:5432/timeseries_db"
-engine = create_engine(DATABASE_URL)
-session = create_session(DATABASE_URL)
+TSDB_DATABASE_URI = "postgresql://user:password@localhost:5432/timeseries_db"
+engine = create_engine(TSDB_DATABASE_URI)
+session = create_session(TSDB_DATABASE_URI)
 
 # Initialize tables and hypertables
 SensorReading.init_db(engine)

@@ -2,6 +2,7 @@ import logging
 import types
 from datetime import datetime
 from typing import Any, TypeVar
+import builtins as blt
 
 from pydantic import BaseModel
 from sqlalchemy import (
@@ -44,7 +45,7 @@ class TimescaleDBConnector(BaseConnector[T]):
     def connect(self):
         try:
             self.engine = create_engine(
-                self.config["database_url"], echo=self.config.get("echo", False)
+                self.config["db_uri"], echo=self.config.get("echo", False)
             )
             self.SessionLocal = sessionmaker(
                 autocommit=False, autoflush=False, bind=self.engine
@@ -193,7 +194,7 @@ class TimescaleDBConnector(BaseConnector[T]):
         order_by: str | None = None,
         order_desc: bool = False,
         **kwargs: Any,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         session = self._get_session()
         try:
             query = select(self._sql_model)
@@ -312,7 +313,7 @@ class TimescaleDBConnector(BaseConnector[T]):
         finally:
             session.close()
 
-    def bulk_insert(self, data_list: list[T]) -> list[T]:
+    def bulk_insert(self, data_list: blt.list[T]) -> blt.list[T]:
         session = self._get_session()
         try:
             if not data_list:
@@ -342,7 +343,7 @@ class TimescaleDBConnector(BaseConnector[T]):
 
     def get_last_k_items(
         self, k: int, filters: dict[str, Any] | None = None
-    ) -> list[T]:
+    ) -> blt.list[T]:
         time_column = self.config.get("time_column", "created_at")
         return self.list_all(
             limit=k, filters=filters, order_by=time_column, order_desc=True

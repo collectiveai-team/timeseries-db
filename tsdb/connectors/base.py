@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Type, TypeVar, Generic
+import builtins as blt
 
 from pydantic import BaseModel
 
@@ -49,7 +50,7 @@ class BaseConnector(ABC, Generic[T]):
         order_by: str | None = None,
         order_desc: bool = False,
         **kwargs: Any,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         """List records with optional filtering, ordering and pagination.
 
         Implementations should honor:
@@ -68,7 +69,7 @@ class BaseConnector(ABC, Generic[T]):
         order_by: str | None = None,
         order_desc: bool = False,
         **kwargs: Any,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         """List all records by delegating to list() without a limit."""
         return self.list(
             limit=None,
@@ -95,11 +96,11 @@ class BaseConnector(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def bulk_insert(self, instances: list[T]) -> list[T]:
+    def bulk_insert(self, instances: blt.list[T]) -> blt.list[T]:
         """Create multiple records efficiently."""
         pass
 
     @abstractmethod
-    def get_last_k_items(self, k: int, time_column: str | None = None) -> list[T]:
+    def get_last_k_items(self, k: int, time_column: str | None = None) -> blt.list[T]:
         """Get the last k items, ordered by the time column."""
         pass

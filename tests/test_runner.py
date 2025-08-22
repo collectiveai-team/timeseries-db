@@ -116,7 +116,7 @@ def main():
             print("Or use --start-db flag to start it automatically.")
 
         # Set test database URL
-        env["TEST_DATABASE_URL"] = (
+        env["TEST_TSDB_DATABASE_URI"] = (
             "postgresql://test_user:test_password@localhost:5432/tsdb"
         )
 

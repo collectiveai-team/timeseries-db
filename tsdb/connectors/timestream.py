@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Type, TypeVar
+import builtins as blt
 
 from pydantic import BaseModel
 
@@ -170,7 +171,7 @@ class AWSTimestreamConnector(BaseConnector[T]):
         order_by: str | None = None,
         order_desc: bool = False,
         **kwargs: Any,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         """List records from Timestream based on query filters.
 
         Note: AWS Timestream's query service doesn't support OFFSET. LIMIT can be
@@ -209,7 +210,7 @@ class AWSTimestreamConnector(BaseConnector[T]):
         # Order by time by default if nothing provided
         order_col = order_by or time_column
         direction = "DESC" if order_desc else "ASC"
-        query += f' ORDER BY {order_col} {direction}'
+        query += f" ORDER BY {order_col} {direction}"
 
         if limit is not None:
             query += f" LIMIT {int(limit)}"
@@ -236,7 +237,7 @@ class AWSTimestreamConnector(BaseConnector[T]):
         order_by: str | None = None,
         order_desc: bool = False,
         **kwargs: Any,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         return self.list(
             limit=None,
             offset=0,
@@ -246,7 +247,7 @@ class AWSTimestreamConnector(BaseConnector[T]):
             **kwargs,
         )
 
-    def _parse_query_result(self, response: dict[str, Any]) -> list[dict[str, Any]]:
+    def _parse_query_result(self, response: dict[str, Any]) -> blt.list[dict[str, Any]]:
         """Parse a single page of a Timestream query result and pivot the data."""
         column_info = response["ColumnInfo"]
         columns = [col["Name"] for col in column_info]
@@ -329,9 +330,7 @@ class AWSTimestreamConnector(BaseConnector[T]):
             logger.error(f"Failed to count items in Timestream: {e}")
             raise ConnectorError(f"Failed to count items in Timestream: {e}") from e
 
-    def get_last_k_items(
-        self, k: int, time_column: str | None = None
-    ) -> list[T]:
+    def get_last_k_items(self, k: int, time_column: str | None = None) -> blt.list[T]:
         """Get the last k items, ordered by time."""
         if not self.query_client:
             raise ConnectionError("Not connected to AWS Timestream.")

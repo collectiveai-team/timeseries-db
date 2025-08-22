@@ -91,7 +91,7 @@ Integration tests use a real TimescaleDB instance and test:
 docker compose up -d timescaledb
 
 # Set test database URL
-export TEST_DATABASE_URL="postgresql://test_user:test_password@localhost:5432/tsdb"
+export TEST_TSDB_DATABASE_URI="postgresql://test_user:test_password@localhost:5432/tsdb"
 
 # Run tests
 pytest tests/integration/ -v
@@ -249,7 +249,7 @@ jobs:
     
     - name: Run integration tests
       env:
-        TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tsdb
+        TEST_TSDB_DATABASE_URI: postgresql://test_user:test_password@localhost:5432/tsdb
       run: python tests/test_runner.py integration
 ```
 

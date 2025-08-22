@@ -15,6 +15,7 @@ To run the TimescaleDB example, ensure the database is running and the
 export TIMESCALE_DSN="postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
 
 """
+
 import datetime
 import os
 import random
@@ -69,9 +70,7 @@ def run_duckdb_example(num_records: int = 250_000):
     print(f"Writing {num_records:,} records to DuckDB...")
     data_to_write = generate_sensor_data(num_records)
     start_time = time.perf_counter()
-    adapter.write_bulk(
-        table_name="sensor_data", data=data_to_write, batch_size=50_000
-    )
+    adapter.write_bulk(table_name="sensor_data", data=data_to_write, batch_size=50_000)
     end_time = time.perf_counter()
     write_duration = end_time - start_time
     records_per_sec = num_records / write_duration
@@ -125,9 +124,7 @@ def run_timescaledb_example(num_records: int = 250_000):
                     print("Successfully created TimescaleDB hypertable.")
                 except psycopg.errors.DuplicateTable:
                     pass  # Hypertable already exists
-                except psycopg.errors.lookup(
-                    "58P01"
-                ):  # undefined_file
+                except psycopg.errors.lookup("58P01"):  # undefined_file
                     print(
                         "TimescaleDB extension not found. Proceeding with standard table."
                     )

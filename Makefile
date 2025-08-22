@@ -54,10 +54,10 @@ pytest-unit:
 	pytest tests/unit/ -v
 
 pytest-integration: docker-up
-	TEST_DATABASE_URL="postgresql://test_user:test_password@localhost:5432/tsdb" pytest tests/integration/ -v
+	TEST_TSDB_DATABASE_URI="postgresql://test_user:test_password@localhost:5432/tsdb" pytest tests/integration/ -v
 
 pytest-all: docker-up
-	TEST_DATABASE_URL="postgresql://test_user:test_password@localhost:5432/tsdb" pytest tests/ -v --cov=tsdb --cov-report=html
+	TEST_TSDB_DATABASE_URI="postgresql://test_user:test_password@localhost:5432/tsdb" pytest tests/ -v --cov=tsdb --cov-report=html
 
 # Clean up
 clean:

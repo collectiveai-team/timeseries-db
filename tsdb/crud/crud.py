@@ -6,7 +6,8 @@ for use with SQLAlchemy and TimescaleDB.
 """
 
 import logging
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, ClassVar
+import builtins as blt
 
 from pydantic import Field, BaseModel
 from tsdb.crud.exceptions import CRUDError
@@ -38,7 +39,7 @@ class CRUDConfig(BaseModel):
 class CRUDMixin(Generic[T]):
     """Mixin class that provides a connector-based CRUD interface."""
 
-    _connector: BaseConnector[T] | None = None
+    _connector: ClassVar[BaseConnector[T] | None] = None
 
     @classmethod
     def set_connector(cls, connector: BaseConnector[T]) -> None:
@@ -74,7 +75,7 @@ class CRUDMixin(Generic[T]):
         filters: dict[str, Any] | None = None,
         order_by: str | None = None,
         order_desc: bool = False,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         """List records via the configured connector."""
         connector = cls._get_connector()
         return connector.list(
@@ -93,7 +94,7 @@ class CRUDMixin(Generic[T]):
         filters: dict[str, Any] | None = None,
         order_by: str | None = None,
         order_desc: bool = False,
-    ) -> list[T]:
+    ) -> blt.list[T]:
         """List all records by delegating to list() without a limit."""
         return cls.list(
             limit=None,
@@ -119,16 +120,18 @@ class CRUDMixin(Generic[T]):
     def count(cls, filters: dict[str, Any] | None = None) -> int:
         """Count records."""
         connector = cls._get_connector()
-        return connector.count(filters)
+        return connector.count(filters=filters)
 
     @classmethod
-    def bulk_insert(cls, data_list: list[T]) -> list[T]:
+    def bulk_insert(cls, data_list: blt.list[T]) -> blt.list[T]:
         """Bulk insert records."""
         connector = cls._get_connector()
         return connector.bulk_insert(data_list)
 
     @classmethod
-    def get_last_k_items(cls, k: int, filters: dict[str, Any] | None = None) -> list[T]:
+    def get_last_k_items(
+        cls, k: int, filters: dict[str, Any] | None = None
+    ) -> blt.list[T]:
         """Get the last k items."""
         connector = cls._get_connector()
         return connector.get_last_k_items(k, filters)

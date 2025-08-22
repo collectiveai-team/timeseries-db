@@ -36,16 +36,16 @@ from tsdb.decorators.darts_decorator import timeseries_storage, create_session
 class TimeSeriesManager:
     """A class for managing TimeSeries objects with database storage."""
 
-    def __init__(self, database_url: str):
+    def __init__(self, TSDB_DATABASE_URI: str):
         """Initialize the manager with a database connection."""
-        self.database_url = database_url
-        self.engine = create_engine(database_url, echo=False)
+        self.TSDB_DATABASE_URI = TSDB_DATABASE_URI
+        self.engine = create_engine(TSDB_DATABASE_URI, echo=False)
 
         # Initialize the database tables
         self.init_db(self.engine)
 
         # Create and set session
-        session = create_session(database_url)
+        session = create_session(TSDB_DATABASE_URI)
         self.set_session(session)
 
     def store_series_with_metadata(
@@ -81,11 +81,11 @@ def main():
         return
 
     # Database connection string (adjust as needed)
-    database_url = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
+    TSDB_DATABASE_URI = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
 
     try:
         # Create manager
-        manager = TimeSeriesManager(database_url)
+        manager = TimeSeriesManager(TSDB_DATABASE_URI)
 
         # Load sample data
         air_passengers = AirPassengersDataset().load()

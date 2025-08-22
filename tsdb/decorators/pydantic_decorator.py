@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Type, TypeVar
+from typing import Any, Type, TypeVar, ClassVar
+import os
 
 from pydantic import BaseModel
 
@@ -36,6 +37,7 @@ def db_crud(
     soft_delete_column: str = "deleted_at",
     enable_audit: bool = True,
     audit_columns: dict[str, str] | None = None,
+    db_uri: str | None = None,
     # Pass connector-specific config via a flat structure for simplicity
     **kwargs: Any,
 ):
@@ -60,6 +62,7 @@ def db_crud(
     def decorator(cls: Type[T]) -> Type[T]:
         """The actual decorator function"""
 
+        db_connection_uri = db_uri or os.getenv("TSDB_DATABASE_URI")
         # 1. Combine all configurations into a single dictionary
         config_dict = {
             "db_type": db_type,
@@ -72,6 +75,7 @@ def db_crud(
             "audit_columns": audit_columns
             if audit_columns
             else {"created_at": "created_at", "updated_at": "updated_at"},
+            "db_uri": db_connection_uri,
             **kwargs,
         }
 
@@ -86,9 +90,9 @@ def db_crud(
 
         # 3. Create Enhanced Model with CRUD Mixin
         class EnhancedModel(cls, CRUDMixin):
-            _connector: BaseConnector = connector
+            _connector: ClassVar[BaseConnector] = connector
 
-            def save(self, **kwargs) -> T:
+            def save_instance(self, **kwargs) -> T:
                 """Save the current instance to the database (create or update)."""
                 pk_value = self._get_primary_key_value()
                 if pk_value is None:
@@ -104,13 +108,13 @@ def db_crud(
                             setattr(self, field, getattr(updated_obj, field))
                 return self
 
-            def delete(self, hard_delete: bool = False) -> None:
+            def delete_instance(self, hard_delete: bool = False) -> None:
                 """Delete the current instance from the database."""
                 pk_value = self._get_primary_key_value()
                 if pk_value is not None:
                     self._connector.delete(pk_value, hard_delete=hard_delete)
 
-            def refresh(self) -> T:
+            def refresh_instance(self) -> T:
                 """Refresh the instance with the latest data from the database."""
                 pk_value = self._get_primary_key_value()
                 if pk_value is not None:

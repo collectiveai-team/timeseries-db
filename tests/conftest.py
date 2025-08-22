@@ -5,76 +5,29 @@ Test configuration and fixtures for the TimescaleDB CRUD system.
 import pytest
 from datetime import datetime
 from typing import Generator
-from unittest.mock import Mock
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 from pydantic import BaseModel
 
-from tsdb.connectors.timescaledb import Base
-from tsdb.decorators.pydantic_decorator import (
-    db_crud as timescale_crud,
-)  # Alias for compatibility
-
-
-@pytest.fixture(scope="session")
-def in_memory_engine():
-    """Create an in-memory SQLite engine for testing."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-        echo=False,
-    )
-    return engine
+from tsdb.decorators.pydantic_decorator import db_crud
+from tsdb.connectors.duckdb import DuckDBConnector
 
 
 @pytest.fixture(scope="function")
-def db_session(in_memory_engine) -> Generator[Session, None, None]:
-    """Create a database session for testing."""
-    # Create all tables
-    Base.metadata.create_all(in_memory_engine)
-
-    # Create session
-    SessionLocal = sessionmaker(
-        autocommit=False, autoflush=False, bind=in_memory_engine
-    )
-    session = SessionLocal()
-
-    try:
-        yield session
-    finally:
-        session.close()
-        # Clean up tables
-        Base.metadata.drop_all(in_memory_engine)
-
-
-@pytest.fixture
-def mock_session():
-    """Create a mock SQLAlchemy session."""
-    session = Mock(spec=Session)
-    session.add = Mock()
-    session.commit = Mock()
-    session.rollback = Mock()
-    session.refresh = Mock()
-    session.close = Mock()
-    session.execute = Mock()
-    session.scalars = Mock()
-    session.get = Mock()
-    return session
+def duckdb_session() -> Generator[DuckDBConnector, None, None]:
+    """Create a DuckDB session for testing."""
+    connector = DuckDBConnector(model=BaseModel, config={"db_path": ":memory:"})
+    connector.connect()
+    yield connector
+    connector.disconnect()
 
 
 @pytest.fixture
 def sample_timeseries_model():
-    """Create a sample Pydantic model for testing."""
+    """Create a sample Pydantic model for testing with DuckDB."""
 
-    @timescale_crud(
-        db_type="timescaledb",
+    @db_crud(
+        db_type="duckdb",
         table_name="sensor_data",
         time_column="timestamp",
-        create_hypertable=True,
-        chunk_time_interval="1 hour",
     )
     class SensorData(BaseModel):
         id: int | None = None
@@ -84,7 +37,19 @@ def sample_timeseries_model():
         timestamp: datetime
         location: str | None = None
 
-    return SensorData
+    # The decorator replaces the class, so we need to get the connector from the new class
+    connector = SensorData._get_connector()
+    # Manually create the table for the test session
+    connector.create_table()
+
+    yield SensorData
+
+    # Cleanup: drop the table
+    try:
+        conn = connector._get_connection()
+        conn.execute(f"DROP TABLE IF EXISTS {connector._get_table_name()}")
+    except Exception:
+        pass  # Ignore cleanup errors
 
 
 @pytest.fixture
@@ -97,62 +62,3 @@ def sample_data():
         "timestamp": datetime(2024, 1, 1, 12, 0, 0),
         "location": "Room A",
     }
-
-
-@pytest.fixture
-def mock_sql_model():
-    """Create a mock SQLAlchemy model instance."""
-    mock_instance = Mock()
-    mock_instance.id = 1
-    mock_instance.sensor_id = "sensor_001"
-    mock_instance.temperature = 23.5
-    mock_instance.humidity = 65.2
-    mock_instance.timestamp = datetime(2024, 1, 1, 12, 0, 0)
-    mock_instance.location = "Room A"
-    mock_instance.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    mock_instance.updated_at = datetime(2024, 1, 1, 12, 0, 0)
-    return mock_instance
-
-
-@pytest.fixture
-def mock_engine():
-    """Create a mock SQLAlchemy engine."""
-    engine = Mock()
-    engine.connect = Mock()
-    engine.execute = Mock()
-    return engine
-
-
-class MockResult:
-    """Mock SQLAlchemy result object."""
-
-    def __init__(self, data=None):
-        self.data = data or []
-
-    def scalars(self):
-        return MockScalars(self.data)
-
-    def first(self):
-        return self.data[0] if self.data else None
-
-    def all(self):
-        return self.data
-
-
-class MockScalars:
-    """Mock SQLAlchemy scalars object."""
-
-    def __init__(self, data):
-        self.data = data
-
-    def all(self):
-        return self.data
-
-    def first(self):
-        return self.data[0] if self.data else None
-
-
-@pytest.fixture
-def mock_result():
-    """Create a mock SQLAlchemy result."""
-    return MockResult

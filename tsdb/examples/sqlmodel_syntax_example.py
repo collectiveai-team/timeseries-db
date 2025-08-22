@@ -54,15 +54,15 @@ def demonstrate_sqlmodel_syntax():
     """Demonstrate the new SQLModel-like syntax"""
 
     # Setup database connection
-    DATABASE_URL = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
-    engine = create_engine(DATABASE_URL, echo=True)
+    TSDB_DATABASE_URI = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
+    engine = create_engine(TSDB_DATABASE_URI, echo=True)
 
     # Initialize database tables
     User.init_db(engine)
     SensorData.init_db(engine)
 
     # Create a CRUD session (SQLModel-like)
-    with create_crud_session(DATABASE_URL) as session:
+    with create_crud_session(TSDB_DATABASE_URI) as session:
         print("=== SQLModel-like Syntax Demo ===\n")
 
         # 1. Create instances and save them (SQLModel-like)
@@ -168,12 +168,12 @@ def demonstrate_sqlmodel_syntax():
 def demonstrate_context_manager():
     """Demonstrate using the session as a context manager"""
 
-    DATABASE_URL = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
+    TSDB_DATABASE_URI = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
 
     print("\n=== Context Manager Demo ===")
 
     # Using session as context manager (auto-commit/rollback)
-    with create_crud_session(DATABASE_URL) as session:
+    with create_crud_session(TSDB_DATABASE_URI) as session:
         user = User(username="context_user", email="context@example.com")
 
         saved_user = session.save(user)
