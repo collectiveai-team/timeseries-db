@@ -1,16 +1,18 @@
 import logging
-from typing import Any, Type
+from typing import Any, Type, TypeVar
 
 from pydantic import BaseModel
 
-from .base import BaseConnector
-from .exceptions import (
+from tsdb.connectors.base import BaseConnector
+from tsdb.connectors.exceptions import (
     ConfigurationError,
     ConnectionError,
     ConnectorError,
 )
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T", bound=BaseModel)
 
 
 try:
@@ -22,10 +24,10 @@ except ImportError:
     boto3 = None
 
 
-class AWSTimestreamConnector(BaseConnector):
+class AWSTimestreamConnector(BaseConnector[T]):
     """Connector for AWS Timestream."""
 
-    def __init__(self, model: Type[BaseModel], config: dict[str, Any]) -> None:
+    def __init__(self, model: Type[T], config: dict[str, Any]) -> None:
         super().__init__(model, config)
         if not boto3:
             raise ImportError(
@@ -66,7 +68,7 @@ class AWSTimestreamConnector(BaseConnector):
             f"Table creation for '{self.database_name}.{self.table_name}' is assumed to be handled manually in AWS Timestream."
         )
 
-    def create(self, instance: BaseModel) -> BaseModel:
+    def create(self, instance: T) -> T:
         """Write a single record to Timestream."""
         if not self.write_client:
             raise ConnectionError("Not connected to AWS Timestream.")
@@ -145,7 +147,7 @@ class AWSTimestreamConnector(BaseConnector):
                 f"An unexpected error occurred while writing to Timestream: {e}"
             ) from e
 
-    def get_by_id(self, item_id: Any) -> BaseModel | None:
+    def get_by_id(self, item_id: Any) -> T | None:
         """Get a single record by its primary key."""
         primary_key_field = self.config.get("primary_key")
         if not primary_key_field:
@@ -156,11 +158,25 @@ class AWSTimestreamConnector(BaseConnector):
                 f"The primary key '{primary_key_field}' must be a dimension (tag) for get_by_id to work with Timestream."
             )
 
-        results = self.list(**{primary_key_field: item_id})
+        results = self.list_all(**{primary_key_field: item_id})
         return results[0] if results else None
 
-    def list(self, **kwargs) -> list[BaseModel]:
-        """List records from Timestream based on query filters."""
+    def list(
+        self,
+        *,
+        limit: int | None = 100,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+        **kwargs: Any,
+    ) -> list[T]:
+        """List records from Timestream based on query filters.
+
+        Note: AWS Timestream's query service doesn't support OFFSET. LIMIT can be
+        emulated in the SELECT. Any extra kwargs are merged into filters for
+        backward compatibility.
+        """
         if not self.query_client:
             raise ConnectionError("Not connected to AWS Timestream.")
 
@@ -168,24 +184,35 @@ class AWSTimestreamConnector(BaseConnector):
         tags = self.config.get("tags", [])
         all_fields = list(self.model.__fields__.keys())
 
-        # Base query selects all dimensions and the measure name/value
-        query = f'SELECT {time_column}, {", ".join(tags)}, measure_name, measure_value FROM "{self.database_name}"."{self.table_name}"'
+        # Merge legacy kwargs into filters
+        if filters is None and kwargs:
+            filters = {**kwargs}
 
-        # Build WHERE clause from kwargs
+        select_fields = f"{time_column}, {', '.join(tags)}, measure_name, measure_value"
+        query = (
+            f'SELECT {select_fields} FROM "{self.database_name}"."{self.table_name}"'
+        )
+
         where_clauses = []
-        for key, value in kwargs.items():
-            if key not in all_fields:
-                logger.warning(f"Ignoring unknown filter key: {key}")
-                continue
-            # Timestream requires single quotes for string literals in SQL
-            if isinstance(value, str):
-                value = f"'{value}'"
-            where_clauses.append(f'"{key}" = {value}')
+        if filters:
+            for key, value in filters.items():
+                if key not in all_fields:
+                    logger.warning(f"Ignoring unknown filter key: {key}")
+                    continue
+                if isinstance(value, str):
+                    value = f"'{value}'"
+                where_clauses.append(f'"{key}" = {value}')
 
         if where_clauses:
             query += " WHERE " + " AND ".join(where_clauses)
 
-        query += f" ORDER BY {time_column} DESC"
+        # Order by time by default if nothing provided
+        order_col = order_by or time_column
+        direction = "DESC" if order_desc else "ASC"
+        query += f' ORDER BY {order_col} {direction}'
+
+        if limit is not None:
+            query += f" LIMIT {int(limit)}"
 
         try:
             paginator = self.query_client.get_paginator("query")
@@ -196,12 +223,28 @@ class AWSTimestreamConnector(BaseConnector):
                 parsed_page = self._parse_query_result(page)
                 all_results.extend(parsed_page)
 
-            # The results are pivoted, so now we create the models
             return [self.model(**data) for data in all_results]
 
         except Exception as e:
             logger.error(f"Failed to query Timestream: {e}")
             raise ConnectorError(f"Failed to list items from Timestream: {e}") from e
+
+    def list_all(
+        self,
+        *,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+        **kwargs: Any,
+    ) -> list[T]:
+        return self.list(
+            limit=None,
+            offset=0,
+            filters=filters,
+            order_by=order_by,
+            order_desc=order_desc,
+            **kwargs,
+        )
 
     def _parse_query_result(self, response: dict[str, Any]) -> list[dict[str, Any]]:
         """Parse a single page of a Timestream query result and pivot the data."""
@@ -252,7 +295,7 @@ class AWSTimestreamConnector(BaseConnector):
 
         return list(pivoted_data.values())
 
-    def update(self, item_id: Any, data: dict[str, Any]) -> BaseModel | None:
+    def update(self, item_id: Any, data: dict[str, Any]) -> T | None:
         raise NotImplementedError("AWS Timestream does not support updates directly.")
 
     def delete(self, item_id: Any, hard_delete: bool = False) -> None:
@@ -288,7 +331,7 @@ class AWSTimestreamConnector(BaseConnector):
 
     def get_last_k_items(
         self, k: int, time_column: str | None = None
-    ) -> list[BaseModel]:
+    ) -> list[T]:
         """Get the last k items, ordered by time."""
         if not self.query_client:
             raise ConnectionError("Not connected to AWS Timestream.")

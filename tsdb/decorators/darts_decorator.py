@@ -8,7 +8,7 @@ to classes that work with Darts TimeSeries objects.
 import logging
 import pickle
 from datetime import datetime
-from typing import Any, TypeVar, type
+from typing import Any, TypeVar
 
 try:
     from darts import TimeSeries

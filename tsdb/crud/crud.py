@@ -69,15 +69,39 @@ class CRUDMixin(Generic[T]):
     @classmethod
     def list(
         cls,
-        limit: int = 100,
+        limit: int | None = 100,
         offset: int = 0,
         filters: dict[str, Any] | None = None,
         order_by: str | None = None,
         order_desc: bool = False,
     ) -> list[T]:
-        """List records."""
+        """List records via the configured connector."""
         connector = cls._get_connector()
-        return connector.list(limit, offset, filters, order_by, order_desc)
+        return connector.list(
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            order_by=order_by,
+            order_desc=order_desc,
+        )
+
+    @classmethod
+    def list_all(
+        cls,
+        limit: int | None = None,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+    ) -> list[T]:
+        """List all records by delegating to list() without a limit."""
+        return cls.list(
+            limit=None,
+            offset=offset,
+            filters=filters,
+            order_by=order_by,
+            order_desc=order_desc,
+        )
 
     @classmethod
     def update(cls, record_id: Any, data: dict[str, Any]) -> T | None:

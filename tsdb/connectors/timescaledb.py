@@ -186,11 +186,13 @@ class TimescaleDBConnector(BaseConnector[T]):
 
     def list(
         self,
-        limit: int = 100,
+        *,
+        limit: int | None = 100,
         offset: int = 0,
         filters: dict[str, Any] | None = None,
         order_by: str | None = None,
         order_desc: bool = False,
+        **kwargs: Any,
     ) -> list[T]:
         session = self._get_session()
         try:
@@ -211,7 +213,9 @@ class TimescaleDBConnector(BaseConnector[T]):
                 column = getattr(self._sql_model, order_by)
                 query = query.order_by(column.desc() if order_desc else column)
 
-            query = query.offset(offset).limit(limit)
+            query = query.offset(offset)
+            if limit is not None:
+                query = query.limit(limit)
             results = session.execute(query).scalars().all()
             return [self._sql_to_pydantic(res) for res in results]
         except SQLAlchemyError as e:
@@ -340,7 +344,7 @@ class TimescaleDBConnector(BaseConnector[T]):
         self, k: int, filters: dict[str, Any] | None = None
     ) -> list[T]:
         time_column = self.config.get("time_column", "created_at")
-        return self.list(
+        return self.list_all(
             limit=k, filters=filters, order_by=time_column, order_desc=True
         )
 

@@ -40,9 +40,44 @@ class BaseConnector(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def list(self, **kwargs) -> list[T]:
-        """List records with optional filtering and pagination."""
+    def list(
+        self,
+        *,
+        limit: int | None = 100,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+        **kwargs: Any,
+    ) -> list[T]:
+        """List records with optional filtering, ordering and pagination.
+
+        Implementations should honor:
+        - limit: maximum number of rows to return (None means no limit)
+        - offset: number of rows to skip (if supported)
+        - filters: equality filters per field name
+        - order_by/order_desc: ordering
+        Additional connector-specific options can be passed via kwargs.
+        """
         pass
+
+    def list_all(
+        self,
+        *,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+        **kwargs: Any,
+    ) -> list[T]:
+        """List all records by delegating to list() without a limit."""
+        return self.list(
+            limit=None,
+            offset=0,
+            filters=filters,
+            order_by=order_by,
+            order_desc=order_desc,
+            **kwargs,
+        )
 
     @abstractmethod
     def update(self, item_id: Any, data: dict[str, Any]) -> T | None:

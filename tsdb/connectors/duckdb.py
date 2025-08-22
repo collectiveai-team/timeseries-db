@@ -1,23 +1,24 @@
 import logging
-from typing import Any, Type
+from typing import Any, Type, TypeVar
 
 import duckdb
 from pydantic import BaseModel
 
-from .base import BaseConnector
-from .exceptions import ConnectionError, ConnectorError
+from tsdb.connectors.base import BaseConnector
+from tsdb.connectors.exceptions import ConnectionError, ConnectorError
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T", bound=BaseModel)
 
-class DuckDBConnector(BaseConnector):
+class DuckDBConnector(BaseConnector[T]):
     """Connector for DuckDB.
 
     This connector stores data in a local or in-memory DuckDB database.
     It's suitable for local development, testing, or small-scale applications.
     """
 
-    def __init__(self, model: Type[BaseModel], config: dict[str, Any]) -> None:
+    def __init__(self, model: Type[T], config: dict[str, Any]) -> None:
         super().__init__(model, config)
         self.db_path = self.config.get("db_path", ":memory:")  # Default to in-memory
         self.conn: duckdb.DuckDBPyConnection | None = None
@@ -86,7 +87,7 @@ class DuckDBConnector(BaseConnector):
             logger.error(f"Failed to create table '{table_name}': {e}")
             raise ConnectorError(f"Failed to create table '{table_name}': {e}") from e
 
-    def create(self, instance: BaseModel) -> BaseModel:
+    def create(self, instance: T) -> T:
         conn = self._get_connection()
         table_name = self._get_table_name()
         data = instance.model_dump()
@@ -99,7 +100,7 @@ class DuckDBConnector(BaseConnector):
         except Exception as e:
             raise ConnectorError(f"Failed to create record: {e}") from e
 
-    def get_by_id(self, item_id: Any) -> BaseModel | None:
+    def get_by_id(self, item_id: Any) -> T | None:
         conn = self._get_connection()
         table_name = self._get_table_name()
         pk = self._get_primary_key()
@@ -110,23 +111,66 @@ class DuckDBConnector(BaseConnector):
             return self.model(**dict(zip(columns, result)))
         return None
 
-    def list(self, **kwargs) -> list[BaseModel]:
+    def list(
+        self,
+        *,
+        limit: int | None = 100,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+        **kwargs: Any,
+    ) -> list[T]:
         conn = self._get_connection()
         table_name = self._get_table_name()
         sql = f'SELECT * FROM "{table_name}"'
-        params = []
-        if kwargs:
+        params: list[Any] = []
+
+        # Merge legacy kwargs into filters for backward-compat
+        if filters is None and kwargs:
+            filters = {**kwargs}
+
+        if filters:
             conditions = []
-            for key, value in kwargs.items():
+            for key, value in filters.items():
                 conditions.append(f'"{key}" = ?')
                 params.append(value)
             sql += " WHERE " + " AND ".join(conditions)
+
+        if order_by:
+            direction = "DESC" if order_desc else "ASC"
+            sql += f' ORDER BY "{order_by}" {direction}'
+
+        if offset:
+            sql += " OFFSET ?"
+            params.append(offset)
+
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
 
         results = conn.execute(sql, params).fetchall()
         columns = [desc[0] for desc in conn.description]
         return [self.model(**dict(zip(columns, row))) for row in results]
 
-    def update(self, item_id: Any, data: dict[str, Any]) -> BaseModel | None:
+    def list_all(
+        self,
+        *,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+        **kwargs: Any,
+    ) -> list[T]:
+        return self.list(
+            limit=None,
+            offset=0,
+            filters=filters,
+            order_by=order_by,
+            order_desc=order_desc,
+            **kwargs,
+        )
+
+    def update(self, item_id: Any, data: dict[str, Any]) -> T | None:
         conn = self._get_connection()
         table_name = self._get_table_name()
         pk = self._get_primary_key()
@@ -174,7 +218,7 @@ class DuckDBConnector(BaseConnector):
 
     def get_last_k_items(
         self, k: int, time_column: str | None = None
-    ) -> list[BaseModel]:
+    ) -> list[T]:
         conn = self._get_connection()
         table_name = self._get_table_name()
         time_col = time_column or self.config.get("time_column", "created_at")

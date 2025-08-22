@@ -12,7 +12,10 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 from pydantic import BaseModel
 
-from tsdb.decorators.pydantic_decorator import Base, timescale_crud
+from tsdb.connectors.timescaledb import Base
+from tsdb.decorators.pydantic_decorator import (
+    db_crud as timescale_crud,
+)  # Alias for compatibility
 
 
 @pytest.fixture(scope="session")
@@ -67,6 +70,7 @@ def sample_timeseries_model():
     """Create a sample Pydantic model for testing."""
 
     @timescale_crud(
+        db_type="timescaledb",
         table_name="sensor_data",
         time_column="timestamp",
         create_hypertable=True,
