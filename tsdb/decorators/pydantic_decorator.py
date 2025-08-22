@@ -4,7 +4,7 @@ import os
 
 from pydantic import BaseModel
 
-from tsdb.crud.crud import CRUDMixin
+from tsdb.crud.crud import CRUDMixin, CRUDProtocol
 from tsdb.connectors.base import BaseConnector
 from tsdb.connectors.timescaledb import TimescaleDBConnector
 from tsdb.connectors.duckdb import DuckDBConnector
@@ -59,7 +59,7 @@ def db_crud(
         A decorator that enhances a Pydantic model with CRUD capabilities.
     """
 
-    def decorator(cls: Type[T]) -> Type[T]:
+    def decorator(cls: Type[T]) -> Type[CRUDProtocol[T]]:
         """The actual decorator function"""
 
         db_connection_uri = db_uri or os.getenv("TSDB_DATABASE_URI")

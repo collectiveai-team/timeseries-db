@@ -6,7 +6,7 @@ for use with SQLAlchemy and TimescaleDB.
 """
 
 import logging
-from typing import Any, Generic, TypeVar, ClassVar
+from typing import Any, Generic, TypeVar, ClassVar, Protocol
 import builtins as blt
 
 from pydantic import Field, BaseModel
@@ -34,6 +34,68 @@ class CRUDConfig(BaseModel):
     )
     # Connector-specific config
     connector_config: dict[str, Any] = Field(default_factory=dict)
+
+
+class CRUDProtocol(Protocol, Generic[T]):
+    """
+    Protocol defining the interface for models enhanced with CRUD operations.
+    This is used for type hinting to enable IDE autocompletion.
+    """
+
+    _connector: ClassVar[BaseConnector[T]]
+
+    # Class methods from CRUDMixin
+    @classmethod
+    def create(cls, data: T) -> T: ...
+
+    @classmethod
+    def get_by_id(cls, record_id: Any) -> T | None: ...
+
+    @classmethod
+    def list(
+        cls,
+        limit: int | None = 100,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+    ) -> blt.list[T]: ...
+
+    @classmethod
+    def list_all(
+        cls,
+        limit: int | None = None,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_desc: bool = False,
+    ) -> blt.list[T]: ...
+
+    @classmethod
+    def update(cls, record_id: Any, data: dict[str, Any]) -> T | None: ...
+
+    @classmethod
+    def delete(cls, record_id: Any, hard_delete: bool = False) -> bool: ...
+
+    @classmethod
+    def count(cls, filters: dict[str, Any] | None = None) -> int: ...
+
+    @classmethod
+    def bulk_insert(cls, data_list: blt.list[T]) -> blt.list[T]: ...
+
+    @classmethod
+    def get_last_k_items(
+        cls, k: int, filters: dict[str, Any] | None = None
+    ) -> blt.list[T]: ...
+
+    # Instance methods from the decorator
+    def save_instance(self, **kwargs) -> T: ...
+
+    def delete_instance(self, hard_delete: bool = False) -> None: ...
+
+    def refresh_instance(self) -> T: ...
+
+    def _get_primary_key_value(self) -> Any: ...
 
 
 class CRUDMixin(Generic[T]):
