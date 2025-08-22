@@ -5,11 +5,10 @@ This example demonstrates how to use the timeseries_storage decorator
 to add TimescaleDB storage capabilities to a class that works with Darts TimeSeries.
 """
 
-from typing import Optional
-
 try:
     from darts import TimeSeries
     from darts.datasets import AirPassengersDataset
+
     DARTS_AVAILABLE = True
 except ImportError:
     TimeSeries = None
@@ -53,9 +52,9 @@ class TimeSeriesManager:
         self,
         series: TimeSeries,
         name: str,
-        category: Optional[str] = None,
-        source: Optional[str] = None,
-        version: Optional[int] = None,
+        category: str | None = None,
+        source: str | None = None,
+        version: int | None = None,
     ) -> int:
         """Store a TimeSeries with additional metadata."""
         metadata = {}
@@ -80,7 +79,7 @@ def main():
         print("ERROR: darts package is required to run this example.")
         print("Install with: uv add tsdb[forecast]")
         return
-    
+
     # Database connection string (adjust as needed)
     database_url = "postgresql://tsdb_user:tsdb_password@localhost:5432/tsdb"
 

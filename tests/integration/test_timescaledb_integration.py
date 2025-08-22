@@ -8,7 +8,6 @@ with the database. They can be run against the Docker Compose setup.
 import pytest
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from pydantic import BaseModel
 from sqlalchemy import create_engine
@@ -51,12 +50,12 @@ class TestTimescaleDBIntegration:
             chunk_time_interval="1 hour",
         )
         class SensorData(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             sensor_id: str
             temperature: float
             humidity: float
             timestamp: datetime
-            location: Optional[str] = None
+            location: str | None = None
 
         # Initialize database
         SensorData.init_db(db_engine)
@@ -267,7 +266,7 @@ class TestTimescaleDBHypertables:
             chunk_time_interval="1 hour",
         )
         class HypertableTest(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             value: float
             timestamp: datetime
 
@@ -302,7 +301,7 @@ class TestTimescaleDBHypertables:
             chunk_time_interval="1 hour",
         )
         class ChunkTest(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             value: float
             timestamp: datetime
 

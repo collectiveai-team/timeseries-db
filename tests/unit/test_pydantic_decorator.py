@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime
 from unittest.mock import Mock
 from pydantic import BaseModel
-from typing import Optional
 
 from tsdb.decorators.pydantic_decorator import timescale_crud
 from tsdb.crud import CRUDConfig, CRUDError
@@ -37,7 +36,7 @@ class TestTimescaleCRUDDecorator:
 
         @timescale_crud(table_name="sensor_data", time_column="timestamp")
         class SensorData(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             sensor_id: str
             temperature: float
             timestamp: datetime
@@ -75,12 +74,12 @@ class TestDecoratorFunctionality:
 
         @timescale_crud(table_name=table_name, time_column="timestamp")
         class SensorData(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             sensor_id: str
             temperature: float
             humidity: float
             timestamp: datetime
-            location: Optional[str] = None
+            location: str | None = None
 
         return SensorData
 
@@ -190,7 +189,7 @@ class TestDecoratorFunctionality:
             table_name="test_soft", time_column="created_at", enable_soft_delete=True
         )
         class SoftDeleteModel(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             name: str
             created_at: datetime
 
@@ -203,7 +202,7 @@ class TestDecoratorFunctionality:
             table_name="test_no_audit", time_column="timestamp", enable_audit=False
         )
         class NoAuditModel(BaseModel):
-            id: Optional[int] = None
+            id: int | None = None
             value: float
             timestamp: datetime
 

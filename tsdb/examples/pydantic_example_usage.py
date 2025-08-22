@@ -6,59 +6,65 @@ with Pydantic models for TimescaleDB operations.
 """
 
 from datetime import datetime
-from typing import Optional
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 
-from tsdb.decorators.pydantic_decorator import timescale_crud, create_session
+from tsdb.crud.session import create_session
+from tsdb.decorators.pydantic_decorator import db_crud
 
 
 # Example 1: Simple time series data model
-@timescale_crud(
+@db_crud(
+    db_type="timescaledb",
     table_name="sensor_readings",
     time_column="timestamp",
-    create_hypertable=True,
-    chunk_time_interval="1 hour",
+    hypertable_config={
+        "time_column_name": "timestamp",
+        "chunk_time_interval": "1 hour",
+    },
     enable_audit=False,  # Disable audit since we use timestamp field
 )
 class SensorReading(BaseModel):
-    id: Optional[int] = None
+    id: int | None = None
     sensor_id: str
     temperature: float
     humidity: float
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    location: Optional[str] = None
+    location: str | None = None
 
 
 # Example 2: User model with soft delete and custom audit columns
-@timescale_crud(
+@db_crud(
+    db_type="timescaledb",
     table_name="users",
     primary_key="user_id",
     time_column="created_at",
     enable_soft_delete=True,
     enable_audit=True,
     audit_columns={"created_at": "created_at", "updated_at": "modified_at"},
-    create_hypertable=False,  # Regular table, not a hypertable
 )
 class User(BaseModel):
-    user_id: Optional[int] = None
+    user_id: int | None = None
     username: str
     email: str
     is_active: bool = True
-    created_at: Optional[datetime] = None
-    modified_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    modified_at: datetime | None = None
 
 
 # Example 3: Stock price data with custom configuration
-@timescale_crud(
+@db_crud(
+    db_type="timescaledb",
     table_name="stock_prices",
     time_column="trade_time",
-    create_hypertable=True,
-    chunk_time_interval="1 day",
+    hypertable_config={
+        "time_column_name": "trade_time",
+        "chunk_time_interval": "1 day",
+    },
     enable_audit=False,  # No audit columns needed
 )
 class StockPrice(BaseModel):
-    id: Optional[int] = None
+    id: int | None = None
     symbol: str
     price: float
     volume: int
